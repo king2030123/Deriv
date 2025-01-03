@@ -210,7 +210,49 @@
                   </shadow>
                 </value>
               </block>
-            </value>
+            </value>np.random.seed(42)
+dates = pd.date_range(start="2024-01-01", periods=200, freq="D")
+price = 100 + np.cumsum(np.random.randn(200))  # Simulated stock prices
+
+df = pd.DataFrame({"Date": dates, "Close": price})
+df.set_index("Date", inplace=True)
+
+# Calculate MACD and Signal Line
+def calculate_macd(data, short_window=12, long_window=26, signal_window=9):
+    data['EMA12'] = data['Close'].ewm(span=short_window, min_periods=1, adjust=False).mean()
+    data['EMA26'] = data['Close'].ewm(span=long_window, min_periods=1, adjust=False).mean()
+    data['MACD'] = data['EMA12'] - data['EMA26']
+    data['Signal_Line'] = data['MACD'].ewm(span=signal_window, min_periods=1, adjust=False).mean()
+    data['Histogram'] = data['MACD'] - data['Signal_Line']
+    return data
+
+# Generate Buy and Sell Signals
+def generate_signals(data):
+    data['Signal'] = 0
+    data.loc[data['MACD'] > data['Signal_Line'], 'Signal'] = 1  # Buy signal
+    data.loc[data['MACD'] < data['Signal_Line'], 'Signal'] = -1  # Sell signal
+    
+    data['Position'] = data['Signal'].diff()  # Capture entry and exit points
+    return data
+
+# Apply MACD and Signal Logic
+df = calculate_macd(df)
+df = generate_signals(df)
+
+# Plot MACD with Buy and Sell Signals
+plt.figure(figsize=(14, 8))
+plt.plot(df.index, df['Close'], label='Close Price', color='gray')
+plt.plot(df.index, df['MACD'], label='MACD', color='blue')
+plt.plot(df.index, df['Signal_Line'], label='Signal Line', color='red')
+plt.bar(df.index, df['Histogram'], label='Histogram', color='green', alpha=0.5)
+
+# Plot Buy and Sell Signals
+plt.plot(df[df['Position'] == 1].index, df['Close'][df['Position'] == 1], '^', markersize=10, color='g', label='Buy Signal')
+plt.plot(df[df['Position'] == -1].index, df['Close'][df['Position'] == -1], 'v', markersize=10, color='r', label='Sell Signal')
+
+plt.title('MACD Indicator with Entry and Exit Points')
+plt.legend()
+plt.show()
           </block>
         </statement>
         <next>
